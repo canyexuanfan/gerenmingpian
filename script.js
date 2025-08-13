@@ -6,6 +6,9 @@ let generatedCardQRCode = null; // 存储程序生成的名片内容二维码
 function generateCard() {
     // 获取表单数据
     const name = document.getElementById('name').value || '您的姓名';
+    const phone = document.getElementById('phone').value || '您的手机号';
+    const email = document.getElementById('email').value || '您的邮箱';
+    const company = document.getElementById('company').value || '您的公司';
     const location = document.getElementById('location').value || '您的地点';
     const title = document.getElementById('title').value || '您的身份标签';
     const avatar = document.getElementById('avatar').value;
@@ -15,19 +18,22 @@ function generateCard() {
     const motto = document.getElementById('motto').value || '您的个人态度';
 
     // 保存当前名片数据
-    currentCardData = { name, location, title, avatar, highlights, skills, interests, motto };
+    currentCardData = { name, phone, email, company, location, title, avatar, highlights, skills, interests, motto };
 
     // 更新名片内容
-    updateCardContent(name, location, title, avatar, highlights, skills, interests, motto);
+    updateCardContent(name, phone, email, company, location, title, avatar, highlights, skills, interests, motto);
     
     // 滚动到名片预览区域
     document.getElementById('businessCard').scrollIntoView({ behavior: 'smooth' });
 }
 
 // 更新名片内容
-function updateCardContent(name, location, title, avatar, highlights, skills, interests, motto) {
+function updateCardContent(name, phone, email, company, location, title, avatar, highlights, skills, interests, motto) {
     // 更新基本信息
     document.getElementById('cardName').textContent = name;
+    document.getElementById('cardPhone').innerHTML = `<i class="fas fa-phone mr-1"></i>${phone}`;
+    document.getElementById('cardEmail').innerHTML = `<i class="fas fa-envelope mr-1"></i>${email}`;
+    document.getElementById('cardCompany').innerHTML = `<i class="fas fa-building mr-1"></i>${company}`;
     document.getElementById('cardLocation').innerHTML = `<i class="fas fa-map-marker-alt mr-1"></i>${location}`;
     document.getElementById('cardTitle').textContent = title;
     
@@ -177,9 +183,9 @@ function handleQRCodeUpload() {
     });
 }
 
-// 生成名片内容二维码
-function generateCardQRCode() {
-    console.log('=== 开始生成名片二维码 ===');
+// 生成名片内容二维码（使用Python后端）
+async function generateCardQRCode() {
+    console.log('=== 开始生成名片二维码（后端方案）===');
     
     try {
         // 1. 检查姓名输入
@@ -196,22 +202,7 @@ function generateCardQRCode() {
         
         console.log('姓名:', name);
         
-        // 2. 检查QRCode库
-        if (typeof QRCode === 'undefined') {
-            throw new Error('QRCode库未加载');
-        }
-        
-        console.log('QRCode库检查通过');
-        
-        // 3. 创建二维码容器
-        const qrContainer = document.createElement('div');
-        qrContainer.id = 'temp-qr-container';
-        qrContainer.style.cssText = 'position: absolute; left: -9999px; top: -9999px; width: 256px; height: 256px;';
-        document.body.appendChild(qrContainer);
-        
-        console.log('容器创建完成');
-        
-        // 4. 收集完整名片信息
+        // 2. 收集完整名片信息
          const location = document.getElementById('location')?.value?.trim() || '';
          const title = document.getElementById('title')?.value?.trim() || '';
          const highlights = document.getElementById('highlights')?.value?.trim() || '';
@@ -219,95 +210,85 @@ function generateCardQRCode() {
          const interests = document.getElementById('interests')?.value?.trim() || '';
          const motto = document.getElementById('motto')?.value?.trim() || '';
          
-         // 5. 格式化为纯英文格式（彻底避免编码问题）
-          let cardText = `Name: ${name}`;
+         // 3. 使用中文标签格式
+          let cardText = `姓名: ${name}`;
           
           if (title) {
-              cardText += ` | Position: ${title}`;
+              cardText += `\n职位: ${title}`;
           }
           
           if (location) {
-              cardText += ` | Location: ${location}`;
+              cardText += `\n地点: ${location}`;
+          }
+          
+          const phoneNumber = document.getElementById('phone')?.value?.trim() || '';
+          const email = document.getElementById('email')?.value?.trim() || '';
+          
+          if (phoneNumber) {
+              cardText += `\n电话: ${phoneNumber}`;
+          }
+          
+          if (email) {
+              cardText += `\n邮箱: ${email}`;
           }
           
           console.log('生成的名片文本:', cardText);
-           console.log('文本长度:', cardText.length);
-           console.log('文本内容详情:', JSON.stringify(cardText));
+          console.log('文本长度:', cardText.length);
          
-         // 6. 生成二维码（直接使用原始文本）
-         try {
-              console.log('生成二维码的文本:', cardText);
-              console.log('文本字符编码:', cardText.split('').map(c => c.charCodeAt(0)));
-              
-              new QRCode(qrContainer, {
-                  text: cardText,
-                  width: 256,
-                  height: 256,
-                  colorDark: '#000000',
-                  colorLight: '#ffffff',
-                  correctLevel: QRCode.CorrectLevel.M,
-                  useSVG: false
-              });
+         // 4. 调用Python后端MeCard API
+          try {
+               console.log('调用后端MeCard API生成二维码');
+               
+               // 显示加载状态
+               showNotification('正在生成名片二维码（MeCard格式）...', 'info');
+               
+               // 提取名片字段信息
+               const cardFields = {
+                   name: document.getElementById('name')?.value?.trim() || '',
+                   phone: document.getElementById('phone')?.value?.trim() || '',
+                   email: document.getElementById('email')?.value?.trim() || '',
+                   org: document.getElementById('company')?.value?.trim() || '',
+                   title: document.getElementById('title')?.value?.trim() || '',
+                   url: '',  // 可以后续添加网址字段
+                   size: 8,
+                   border: 4
+               };
+               
+               console.log('MeCard数据:', cardFields);
+               
+               const response = await fetch('http://localhost:5000/generate_mecard', {
+                   method: 'POST',
+                   headers: {
+                       'Content-Type': 'application/json',
+                   },
+                   body: JSON.stringify(cardFields)
+               });
+               
+               const result = await response.json();
+               
+               if (result.success) {
+                   console.log('后端MeCard二维码生成成功');
+                   
+                   // 保存二维码数据
+                   generatedCardQRCode = result.qr_code;
+                   
+                   // 只更新预览区域，不影响名片上的用户二维码
+                   updateCardContentQRPreview(result.qr_code);
+                   
+                   showNotification('名片二维码生成成功（MeCard格式）！', 'success');
+               } else {
+                   console.error('后端MeCard二维码生成失败:', result.error);
+                   throw new Error(result.message || '后端MeCard生成失败');
+               }
             
-            console.log('QRCode构造函数调用完成');
-            
-            // 7. 等待生成并获取结果
-            setTimeout(() => {
-                try {
-                    console.log('开始检查生成结果...');
-                    
-                    const img = qrContainer.querySelector('img');
-                    const canvas = qrContainer.querySelector('canvas');
-                    
-                    let qrDataUrl = null;
-                    
-                    if (img && img.src && img.src.startsWith('data:')) {
-                        qrDataUrl = img.src;
-                        console.log('从img元素获取二维码数据');
-                    } else if (canvas) {
-                        qrDataUrl = canvas.toDataURL('image/png');
-                        console.log('从canvas元素获取二维码数据');
-                    }
-                    
-                    if (qrDataUrl) {
-                         console.log('二维码生成成功！');
-                         
-                         // 保存二维码数据
-                         generatedCardQRCode = qrDataUrl;
-                         
-                         // 只更新预览区域，不影响名片上的用户二维码
-                         updateCardContentQRPreview(qrDataUrl);
-                         
-                         showNotification('名片二维码生成成功！', 'success');
-                     } else {
-                         throw new Error('无法获取二维码数据');
-                     }
-                    
-                } catch (error) {
-                    console.error('处理二维码结果失败:', error);
-                    alert('二维码处理失败: ' + error.message);
-                } finally {
-                    // 清理容器
-                    if (qrContainer && qrContainer.parentNode) {
-                        qrContainer.parentNode.removeChild(qrContainer);
-                    }
-                }
-            }, 1500); // 增加等待时间
-            
-        } catch (qrError) {
-            console.error('QRCode构造失败:', qrError);
-            throw new Error('二维码构造失败: ' + qrError.message);
+        } catch (fetchError) {
+            console.error('调用后端API失败:', fetchError);
+            throw new Error('无法连接到后端服务: ' + fetchError.message);
         }
         
     } catch (error) {
         console.error('=== 二维码生成失败 ===', error);
         alert('二维码生成失败: ' + error.message);
-        
-        // 清理可能残留的容器
-        const tempContainer = document.getElementById('temp-qr-container');
-        if (tempContainer && tempContainer.parentNode) {
-            tempContainer.parentNode.removeChild(tempContainer);
-        }
     }
 }
 
@@ -410,18 +391,11 @@ function updateCardContentQRPreview(qrCodeUrl) {
     }
 }
 
-// 生成名片二维码（扫描查看名片）
-function generateCardShareQRCode() {
+// 生成名片二维码（扫描查看名片）（使用Python后端）
+async function generateCardShareQRCode() {
     const name = document.getElementById('name').value;
     if (!name.trim()) {
         alert('请先填写姓名信息！');
-        return;
-    }
-    
-    // 检查QRCode库是否可用
-    if (typeof QRCode === 'undefined') {
-        console.error('QRCode库未加载');
-        alert('二维码库加载失败，请刷新页面重试');
         return;
     }
     
@@ -432,43 +406,40 @@ function generateCardShareQRCode() {
         console.log('分享URL:', cardUrl);
         console.log('URL长度:', cardUrl.length);
         
-        // 检查URL长度
-        console.log('分享URL:', cardUrl);
-        console.log('URL长度:', cardUrl.length);
+        // 显示加载状态
+        showNotification('正在生成分享二维码...', 'info');
         
-        // 移除URL长度限制，支持任意长度的名片信息
-        console.log('分享URL长度:', cardUrl.length, '字符 (无限制)');
-        
-        // 生成二维码
-        const canvas = document.createElement('canvas');
-        QRCode.toCanvas(canvas, cardUrl, {
-            width: 300,
-            margin: 1,
-            color: {
-                dark: '#000000',
-                light: '#FFFFFF'
-            },
-            errorCorrectionLevel: 'L'  // 使用最低错误纠正级别以增加数据容量
-        }, function(error) {
-            if (error) {
-                console.error('分享二维码生成失败:', error);
-                alert('分享二维码生成失败：' + error.message);
+        // 调用Python后端API生成二维码
+        try {
+            const response = await fetch('http://localhost:5000/generate_qr', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text: cardUrl,
+                    size: 10,
+                    border: 4
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log('后端分享二维码生成成功');
+                
+                // 更新名片上的二维码显示
+                updateQRCode(result.qr_code);
+                // 显示二维码
+                showQRCodeModal(result.qr_code, cardUrl);
             } else {
-                try {
-                    console.log('分享二维码生成成功，开始转换为图片...');
-                    const qrCodeDataUrl = canvas.toDataURL('image/png');
-                    console.log('分享二维码图片转换成功');
-                    
-                    // 更新名片上的二维码显示
-                    updateQRCode(qrCodeDataUrl);
-                    // 显示二维码
-                    showQRCodeModal(qrCodeDataUrl, cardUrl);
-                } catch (canvasError) {
-                    console.error('分享二维码图片转换失败:', canvasError);
-                    alert('分享二维码图片转换失败：' + canvasError.message);
-                }
+                console.error('后端分享二维码生成失败:', result.error);
+                alert('分享二维码生成失败：' + (result.message || '后端生成失败'));
             }
-        });
+        } catch (fetchError) {
+            console.error('调用后端API失败:', fetchError);
+            alert('分享二维码生成失败：无法连接到后端服务');
+        }
     } catch (generalError) {
         console.error('生成分享二维码时发生未知错误:', generalError);
         alert('生成分享二维码时发生错误：' + generalError.message);
@@ -544,6 +515,9 @@ function shareCard() {
     // 生成完整的HTML文件内容
     const cardData = {
         name: document.getElementById('name').value,
+        phone: document.getElementById('phone').value,
+        email: document.getElementById('email').value,
+        company: document.getElementById('company').value,
         location: document.getElementById('location').value,
         title: document.getElementById('title').value,
         avatar: document.getElementById('avatar').value,
@@ -597,9 +571,18 @@ function generateCardHTML(data) {
                 </div>
                 <h3 class="text-2xl font-bold text-gray-800 mb-1">${data.name}</h3>
                 <p class="text-gray-600 mb-2 flex items-center justify-center">
-                    <i class="fas fa-map-marker-alt mr-1"></i>${data.location}
+                    <i class="fas fa-phone mr-1"></i>${data.phone || '您的手机号'}
                 </p>
-                <span class="inline-block bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">${data.title}</span>
+                <p class="text-gray-600 mb-2 flex items-center justify-center">
+                    <i class="fas fa-envelope mr-1"></i>${data.email || '您的邮箱'}
+                </p>
+                <p class="text-gray-600 mb-2 flex items-center justify-center">
+                    <i class="fas fa-building mr-1"></i>${data.company || '您的公司'}
+                </p>
+                <p class="text-gray-600 mb-2 flex items-center justify-center">
+                    <i class="fas fa-map-marker-alt mr-1"></i>${data.location || '您的地点'}
+                </p>
+                <span class="inline-block bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">${data.title || '您的身份标签'}</span>
             </div>
 
             <!-- 主体部分 -->
@@ -725,6 +708,9 @@ function showNotification(message, type = 'info') {
 // 触发名片更新
 function triggerCardUpdate() {
     const name = document.getElementById('name').value || '您的姓名';
+    const phone = document.getElementById('phone').value || '您的手机号';
+    const email = document.getElementById('email').value || '您的邮箱';
+    const company = document.getElementById('company').value || '您的公司';
     const location = document.getElementById('location').value || '您的地点';
     const title = document.getElementById('title').value || '您的身份标签';
     const avatar = document.getElementById('avatar').value;
@@ -733,12 +719,12 @@ function triggerCardUpdate() {
     const interests = document.getElementById('interests').value;
     const motto = document.getElementById('motto').value || '您的个人态度';
     
-    updateCardContent(name, location, title, avatar, highlights, skills, interests, motto);
+    updateCardContent(name, phone, email, company, location, title, avatar, highlights, skills, interests, motto);
 }
 
 // 实时预览功能
 function setupRealTimePreview() {
-    const inputs = ['name', 'location', 'title', 'highlights', 'skills', 'interests', 'motto'];
+    const inputs = ['name', 'phone', 'email', 'company', 'location', 'title', 'highlights', 'skills', 'interests', 'motto'];
     
     inputs.forEach(inputId => {
         const element = document.getElementById(inputId);
@@ -860,6 +846,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // 添加一些示例数据
     const examples = {
         name: '张三',
+        phone: '13800138000',
+        email: 'zhangsan@example.com',
+        company: '北京科技有限公司',
         location: '北京市',
         title: '产品经理',
         highlights: '5年互联网产品经验\n主导过3个千万级用户产品\n获得公司年度最佳员工奖',
