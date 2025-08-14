@@ -1,12 +1,4 @@
 {
-  "functions": {
-    "api/generate_qr.py": {
-      "runtime": "python3.12"
-    },
-    "api/generate_mecard.py": {
-      "runtime": "python3.12"
-    }
-  },
   "routes": [
     {
       "src": "/api/(.*)",
