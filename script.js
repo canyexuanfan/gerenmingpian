@@ -256,7 +256,7 @@ async function generateCardQRCode() {
                
                console.log('MeCard数据:', cardFields);
                
-               const response = await fetch('http://localhost:5000/generate_mecard', {
+               const response = await fetch('/api/generate_mecard', {
                    method: 'POST',
                    headers: {
                        'Content-Type': 'application/json',
@@ -411,7 +411,7 @@ async function generateCardShareQRCode() {
         
         // 调用Python后端API生成二维码
         try {
-            const response = await fetch('http://localhost:5000/generate_qr', {
+            const response = await fetch('/api/generate_qr', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
