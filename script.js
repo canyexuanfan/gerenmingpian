@@ -183,12 +183,62 @@ function handleQRCodeUpload() {
     });
 }
 
-// 生成名片内容二维码（使用Python后端）
+function escapeMecardValue(value) {
+    return (value || '')
+        .replace(/\\/g, '\\\\')
+        .replace(/;/g, '\\;')
+        .replace(/:/g, '\\:')
+        .replace(/\r?\n/g, ' ')
+        .trim();
+}
+
+function buildMecardText(cardFields) {
+    const parts = ['MECARD:'];
+
+    if (cardFields.name) {
+        parts.push(`N:${escapeMecardValue(cardFields.name)};`);
+    }
+    if (cardFields.phone) {
+        parts.push(`TEL:${escapeMecardValue(cardFields.phone)};`);
+    }
+    if (cardFields.email) {
+        parts.push(`EMAIL:${escapeMecardValue(cardFields.email)};`);
+    }
+    if (cardFields.org) {
+        parts.push(`ORG:${escapeMecardValue(cardFields.org)};`);
+    }
+    if (cardFields.title) {
+        parts.push(`TITLE:${escapeMecardValue(cardFields.title)};`);
+    }
+    if (cardFields.url) {
+        parts.push(`URL:${escapeMecardValue(cardFields.url)};`);
+    }
+
+    parts.push(';');
+    return parts.join('');
+}
+
+async function generateQrDataUrl(text, options = {}) {
+    if (typeof QRCode === 'undefined' || typeof QRCode.toDataURL !== 'function') {
+        throw new Error('二维码库未成功加载');
+    }
+
+    return QRCode.toDataURL(text, {
+        errorCorrectionLevel: options.errorCorrectionLevel || 'H',
+        margin: options.margin ?? 2,
+        width: options.width || 360,
+        color: {
+            dark: '#111827',
+            light: '#FFFFFFFF'
+        }
+    });
+}
+
+// 生成名片内容二维码（纯前端）
 async function generateCardQRCode() {
-    console.log('=== 开始生成名片二维码（后端方案）===');
+    console.log('=== 开始生成名片二维码（纯前端方案）===');
     
     try {
-        // 1. 检查姓名输入
         const nameInput = document.getElementById('name');
         if (!nameInput) {
             throw new Error('找不到姓名输入框');
@@ -202,89 +252,28 @@ async function generateCardQRCode() {
         
         console.log('姓名:', name);
         
-        // 2. 收集完整名片信息
-         const location = document.getElementById('location')?.value?.trim() || '';
-         const title = document.getElementById('title')?.value?.trim() || '';
-         const highlights = document.getElementById('highlights')?.value?.trim() || '';
-         const skills = document.getElementById('skills')?.value?.trim() || '';
-         const interests = document.getElementById('interests')?.value?.trim() || '';
-         const motto = document.getElementById('motto')?.value?.trim() || '';
-         
-         // 3. 使用中文标签格式
-          let cardText = `姓名: ${name}`;
-          
-          if (title) {
-              cardText += `\n职位: ${title}`;
-          }
-          
-          if (location) {
-              cardText += `\n地点: ${location}`;
-          }
-          
-          const phoneNumber = document.getElementById('phone')?.value?.trim() || '';
-          const email = document.getElementById('email')?.value?.trim() || '';
-          
-          if (phoneNumber) {
-              cardText += `\n电话: ${phoneNumber}`;
-          }
-          
-          if (email) {
-              cardText += `\n邮箱: ${email}`;
-          }
-          
-          console.log('生成的名片文本:', cardText);
-          console.log('文本长度:', cardText.length);
-         
-         // 4. 调用Python后端MeCard API
-          try {
-               console.log('调用后端MeCard API生成二维码');
-               
-               // 显示加载状态
-               showNotification('正在生成名片二维码（MeCard格式）...', 'info');
-               
-               // 提取名片字段信息
-               const cardFields = {
-                   name: document.getElementById('name')?.value?.trim() || '',
-                   phone: document.getElementById('phone')?.value?.trim() || '',
-                   email: document.getElementById('email')?.value?.trim() || '',
-                   org: document.getElementById('company')?.value?.trim() || '',
-                   title: document.getElementById('title')?.value?.trim() || '',
-                   url: '',  // 可以后续添加网址字段
-                   size: 8,
-                   border: 4
-               };
-               
-               console.log('MeCard数据:', cardFields);
-               
-               const response = await fetch('/api/generate_mecard', {
-                   method: 'POST',
-                   headers: {
-                       'Content-Type': 'application/json',
-                   },
-                   body: JSON.stringify(cardFields)
-               });
-               
-               const result = await response.json();
-               
-               if (result.success) {
-                   console.log('后端MeCard二维码生成成功');
-                   
-                   // 保存二维码数据
-                   generatedCardQRCode = result.qr_code;
-                   
-                   // 只更新预览区域，不影响名片上的用户二维码
-                   updateCardContentQRPreview(result.qr_code);
-                   
-                   showNotification('名片二维码生成成功（MeCard格式）！', 'success');
-               } else {
-                   console.error('后端MeCard二维码生成失败:', result.error);
-                   throw new Error(result.message || '后端MeCard生成失败');
-               }
-            
-        } catch (fetchError) {
-            console.error('调用后端API失败:', fetchError);
-            throw new Error('无法连接到后端服务: ' + fetchError.message);
-        }
+        showNotification('正在生成名片二维码（纯前端）...', 'info');
+
+        const cardFields = {
+            name: document.getElementById('name')?.value?.trim() || '',
+            phone: document.getElementById('phone')?.value?.trim() || '',
+            email: document.getElementById('email')?.value?.trim() || '',
+            org: document.getElementById('company')?.value?.trim() || '',
+            title: document.getElementById('title')?.value?.trim() || '',
+            url: ''
+        };
+
+        const mecardText = buildMecardText(cardFields);
+        console.log('MeCard数据:', mecardText);
+
+        generatedCardQRCode = await generateQrDataUrl(mecardText, {
+            width: 360,
+            margin: 2,
+            errorCorrectionLevel: 'H'
+        });
+
+        updateCardContentQRPreview(generatedCardQRCode);
+        showNotification('名片二维码生成成功（纯前端）！', 'success');
         
     } catch (error) {
         console.error('=== 二维码生成失败 ===', error);
@@ -391,7 +380,7 @@ function updateCardContentQRPreview(qrCodeUrl) {
     }
 }
 
-// 生成名片二维码（扫描查看名片）（使用Python后端）
+// 生成名片二维码（扫描查看名片）（纯前端）
 async function generateCardShareQRCode() {
     const name = document.getElementById('name').value;
     if (!name.trim()) {
@@ -409,37 +398,15 @@ async function generateCardShareQRCode() {
         // 显示加载状态
         showNotification('正在生成分享二维码...', 'info');
         
-        // 调用Python后端API生成二维码
-        try {
-            const response = await fetch('/api/generate_qr', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    text: cardUrl,
-                    size: 10,
-                    border: 4
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                console.log('后端分享二维码生成成功');
-                
-                // 更新名片上的二维码显示
-                updateQRCode(result.qr_code);
-                // 显示二维码
-                showQRCodeModal(result.qr_code, cardUrl);
-            } else {
-                console.error('后端分享二维码生成失败:', result.error);
-                alert('分享二维码生成失败：' + (result.message || '后端生成失败'));
-            }
-        } catch (fetchError) {
-            console.error('调用后端API失败:', fetchError);
-            alert('分享二维码生成失败：无法连接到后端服务');
-        }
+        const qrCodeUrl = await generateQrDataUrl(cardUrl, {
+            width: 360,
+            margin: 2,
+            errorCorrectionLevel: 'H'
+        });
+
+        console.log('前端分享二维码生成成功');
+        updateQRCode(qrCodeUrl);
+        showQRCodeModal(qrCodeUrl, cardUrl);
     } catch (generalError) {
         console.error('生成分享二维码时发生未知错误:', generalError);
         alert('生成分享二维码时发生错误：' + generalError.message);

@@ -4,21 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>个人社交名片生成器</title>
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    <!-- QRious库 - 本地文件 -->
-    <script src="qrious.min.js"></script>
-    <!-- QRious库加载检测 -->
+    <!-- 现代二维码库 -->
+    <script src="qrcode-modern.bundle.js"></script>
+    <!-- 二维码库加载检测 -->
     <script>
         // 本地库加载检测
         function checkLocalQRCode() {
-            if (typeof QRious === 'undefined') {
-                console.error('本地QRious库加载失败');
+            if (typeof QRCode === 'undefined' || typeof QRCode.toDataURL !== 'function') {
+                console.error('本地二维码库加载失败');
                 window.qrCodeLoadFailed = true;
                 return false;
             }
-            console.log('本地QRious库加载成功');
+            console.log('本地二维码库加载成功');
             return true;
         }
         
@@ -56,9 +59,9 @@
         
         // 监听脚本加载成功事件
         window.addEventListener('DOMContentLoaded', function() {
-            // 如果QRious已经可用，立即显示成功状态
-            if (typeof QRious !== 'undefined') {
-                console.log('QRious库在DOMContentLoaded时已可用');
+            // 如果二维码库已经可用，立即显示成功状态
+            if (typeof QRCode !== 'undefined' && typeof QRCode.toDataURL === 'function') {
+                console.log('二维码库在DOMContentLoaded时已可用');
                 showQRCodeStatus('load-success');
             }
         });
